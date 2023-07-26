@@ -2,6 +2,7 @@ import os
 import crcmod
 import base64
 import shutil
+import csv
 
 
 class ChangeScanner:
@@ -98,7 +99,7 @@ class ChangeScanner:
                 continue
             if get_crc32c(self.create_old_path_names() + "/" + pre + "/" + item) != \
                     get_crc32c(self.create_new_path_names() + "/" + pre + "/" + item):
-                update_items.append(item)
+                update_items.append(pre + "/" + item)
         return update_items
 
     def create_new_path_names(self):
@@ -147,3 +148,13 @@ def create_missing_directory(filepath, prefix=""):
         os.mkdir(prefix + directory_name)
 
     create_missing_directory(filepath, prefix=prefix + directory_name + "/")
+
+
+def create_csv(filename, fields):
+    append_row_to_csv(filename, fields)
+
+
+def append_row_to_csv(filename, row):
+    with open(filename, 'a') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        csvwriter.writerow(row)

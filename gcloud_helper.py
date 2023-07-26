@@ -40,13 +40,16 @@ def download_all(bucket, working_dir):
 
 
 def is_file_different(file_name, blob_name, bucket):
-    blob = bucket.blob(blob_name)
-    return blob.crc32c == filemanaging.get_crc32c(file_name)
+    blob = bucket.get_blob(blob_name)
+    return blob.crc32c != filemanaging.get_crc32c(file_name)
 
 
-def find_new_and_updated_cloud_files(working_directory_path, bucket):
+def find_new_and_updated_cloud_files(working_directory_path, bucket, ignores=[]):
     pulled_files = []
-    for blob in bucket.list_blobs():
+    blobs = bucket.list_blobs()
+    for blob in blobs:
+        if blob.name in ignores:
+            continue
         if not os.path.exists(working_directory_path + blob.name) or is_file_different(
                 working_directory_path + blob.name,
                 blob.name, bucket):
