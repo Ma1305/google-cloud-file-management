@@ -23,6 +23,7 @@ Goal is to store assets in storage and sync them between multiple users.
 3. Run the following in terminal: `python3 main.py setup`
 
 # How to use
-
-
-# How it works
+When starting a project call the setup command to get a log files setup on your storage  
+Then make sure to include the "logs.csv" in your IGNORES array
+After this its simple, you can use the pull command to pull in the cloud's changes: `python3 main.py pull`    
+And you can use the push command to push your changes to the cloud: `python3 main.py push`
