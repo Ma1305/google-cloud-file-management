@@ -1,10 +1,11 @@
 import os
 import sys
+import filemanaging
+import gcloud_helper as cloud
 
 from google.cloud import storage
-from gcloud_helper import upload_file, delete_file, download_file, download_all
 from filemanaging import ChangeScanner
-from config import CREDENTIAL_FILENAME, BUCKET_NAME, IGNORES, USERNAME
+from config import CREDENTIAL_FILENAME, BUCKET_NAME, IGNORES, USERNAME, OLD_VERSION_DIR_PATH, WORKING_DIR_PATH
 from module_helper import Option
 
 
@@ -12,50 +13,103 @@ def setup():
     pass
 
 
-def upload_all():
-    pass
+def push():
+    global change_scanner, my_bucket
+
+    confirmation("push")
+
+    new_files = change_scanner.scan_for_new_files()
+    deleted_files = change_scanner.scan_for_deleted_files()
+    updated_files = change_scanner.scan_for_updated_files()
+
+    print("New files are: ")
+    for item in new_files:
+        print(item)
+        if item[-1] != "/":
+            cloud.upload_file(WORKING_DIR_PATH + item, item, my_bucket)
+            filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
+
+    print("Deleted files are: ")
+    for item in deleted_files:
+        print(item)
+        if item[-1] != "/":
+            cloud.delete_file(item, my_bucket)
+            filemanaging.delete_file(OLD_VERSION_DIR_PATH + item)
+
+    print("Modified files are: ")
+    for item in updated_files:
+        print(item)
+        if item[-1] != "/":
+            cloud.upload_file(WORKING_DIR_PATH + item, item, my_bucket)
+            filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
 
-def download_all():
-    pass
+def pull():
+    global my_bucket
+
+    confirmation("pull")
+
+    pulled_files = cloud.find_new_and_updated_cloud_files(WORKING_DIR_PATH, my_bucket)
+    for item in pulled_files:
+        filemanaging.create_missing_directory(WORKING_DIR_PATH + "/" + item)
+        cloud.download_file(WORKING_DIR_PATH + "/" + item, item, my_bucket)
+        pulled_files.append(item)
+
+    deleted_files = cloud.find_deleted_cloud_files(WORKING_DIR_PATH, my_bucket, ignores=IGNORES)
+    for item in deleted_files:
+        filemanaging.delete_file(WORKING_DIR_PATH + "/" + item)
+
+    # update old version folder
+    new_files = change_scanner.scan_for_new_files()
+    deleted_files = change_scanner.scan_for_deleted_files()
+    updated_files = change_scanner.scan_for_updated_files()
+
+    print("New files are: ")
+    for item in new_files:
+        print(item)
+        if item[-1] != "/":
+            filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
+
+    print("Deleted files are: ")
+    for item in deleted_files:
+        print(item)
+        if item[-1] != "/":
+            filemanaging.delete_file(OLD_VERSION_DIR_PATH + item)
+
+    print("Modified files are: ")
+    for item in updated_files:
+        print(item)
+        if item[-1] != "/":
+            filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
 
-def upload_efficient():
-    pass
-
-
-def download_efficient():
-    pass
-
-
-def confirmation():
+def confirmation(action):
     """
     :return: bool
     """
-    pass
+    response = input(f"Enter yes to confirm that you want to {action}: ")
+    if response.lower().strip() == "yes":
+        print(f"starting the {action} process\n")
+        return
+    print(f"canceling the {action} process\n")
+    quit()
 
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = CREDENTIAL_FILENAME
-
 storage_client = storage.Client()
-
 my_bucket = storage_client.get_bucket(BUCKET_NAME)
+
+change_scanner = ChangeScanner(OLD_VERSION_DIR_PATH, WORKING_DIR_PATH, skip_files=IGNORES)
 
 options = [
     Option("setup", "sets up all the important files for tracking the changes", setup,
            warning="DO NOT CALL THIS METHOD UNLESS YOU ARE SETTING UP THE STORAGE AND SCRIPT"),
-    Option("upload-all", "uploading all the files from your computer to storage. Overwriting the cloud storage files.",
-           upload_all,
-           warning="SHOULD BE AVOIDED, UNLESS SETTING UP THE STORAGE"),
-    Option("download-all", "downloads all the files from the storage. Overwriting the files on your computer",
-           download_all,
-           warning="SHOULD BE AVOIDED, UNLESS SETTING UP THE STORAGE ON YOUR COMPUTER"),
-    Option("upload-efficient", "uploads only the modified files (new, deleted, and updated files)",
-           upload_efficient,
+    Option("push", "uploads only the modified files (new, deleted, and updated files)",
+           push,
            warning="RECOMMENDED TO USE WHEN ALL CHANGES ARE DONE, POSSIBILITY OF CONFLICT"),
-    Option("download-efficient",
+    Option("pull",
            "download only the files updated since the last download (new, deleted, updates files)",
-           download_efficient,
+           pull,
            warning="IF YOU HAVE MADE ANY CHANGES, YOUR CHANGES WILL BE OVERWRITTEN (POSSIBILITY OF CONFLICT)")
 ]
 
@@ -64,11 +118,11 @@ if len(sys.argv) < 1:
     print("Available arguments:")
     [print(option.name) for option in options]
 
-if sys.argv[0] not in [option.name for option in options]:
+if sys.argv[1] not in [option.name for option in options]:
     print("Invalid argument")
     print("Available arguments:")
     [print(option.name) for option in options]
 
 for option in options:
-    if option.name == sys.argv[0].lower():
+    if option.name == sys.argv[1].lower():
         option.action()

@@ -1,12 +1,10 @@
+import filemanaging
 import os
-import crcmod
-import base64
 
 
 def upload_file(file_name, blob_name, bucket):
     try:
         blob = bucket.blob(blob_name)
-        [print(item) for item in dir(blob)]
         blob.upload_from_filename(file_name)
     except Exception as e:
         print(f"following error occurred when uploading {file_name} as {blob_name} in {bucket.name} bucket")
@@ -34,41 +32,51 @@ def delete_file(blob_name, bucket):
         return False
 
 
-def download_all(bucket):
+def download_all(bucket, working_dir):
     all_files = bucket.list_blobs()
     for file in all_files:
-        create_missing_directory(file.name, prefix="../")
-        download_file("../" + file.name, file.name, bucket)
-
-
-def create_missing_directory(filepath, prefix=""):
-    """
-    Do not use this method unless you fully understand it.
-    It is meant as a helper method, not to be used in other code.
-    :param filepath:
-    :param prefix:
-    :return:
-    """
-    directory_from_index = filepath.find("/")
-    if directory_from_index == -1:
-        return
-
-    directory_name = filepath[:directory_from_index]
-    filepath = filepath[directory_from_index + 1:]
-
-    if filepath == "":
-        return
-    if not os.path.exists(prefix + directory_name):
-        os.mkdir(prefix + directory_name)
-
-    create_missing_directory(filepath, prefix=prefix + directory_name + "/")
+        filemanaging.create_missing_directory(file.name, prefix=working_dir)
+        download_file(working_dir + file.name, file.name, bucket)
 
 
 def is_file_different(file_name, blob_name, bucket):
-    blob = bucket.get_bucket(blob_name)
-    with open(file_name) as file:
-        file_bytes = file.read()
-        crc32c = crcmod.predefined.Crc('crc-32c')
-        crc32c.update(file_bytes)
+    blob = bucket.blob(blob_name)
+    return blob.crc32c == filemanaging.get_crc32c(file_name)
 
-        return blob.crc32c == base64.b64encode(crc32c.digest()).decode('utf-8')
+
+def find_new_and_updated_cloud_files(working_directory_path, bucket):
+    pulled_files = []
+    for blob in bucket.list_blobs():
+        if not os.path.exists(working_directory_path + blob.name) or is_file_different(
+                working_directory_path + blob.name,
+                blob.name, bucket):
+            pulled_files.append(blob.name)
+    return pulled_files
+
+
+def find_deleted_cloud_files(working_directory_path, bucket, ignores=[]):
+    items = os.listdir(working_directory_path)
+    deleted_items = []
+    for item in items:
+        if item in ignores:
+            continue
+        if os.path.isdir(working_directory_path + "/" + item):
+            deleted_items += find_deleted_cloud_files_recursive(working_directory_path, item, bucket, ignores=ignores)
+            continue
+        if not bucket.blob(item).exists():
+            deleted_items.append(item)
+    return deleted_items
+
+
+def find_deleted_cloud_files_recursive(working_directory_path, pre, bucket, ignores):
+    items = os.listdir(working_directory_path + "/" + pre)
+    deleted_items = []
+    for item in items:
+        if pre + "/" + item in ignores:
+            continue
+        if os.path.isdir(working_directory_path + "/" + pre + "/" + item):
+            deleted_items += find_deleted_cloud_files_recursive(working_directory_path, pre + "/" + item, bucket, ignores=ignores)
+            continue
+        if not bucket.blob(pre + "/" + item).exists():
+            deleted_items.append(pre + "/" + item)
+    return deleted_items
