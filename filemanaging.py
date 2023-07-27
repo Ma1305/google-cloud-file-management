@@ -144,6 +144,8 @@ def create_missing_directory(filepath, prefix=""):
 
     if filepath == "":
         return
+    if directory_name == "":
+        return
     if not os.path.exists(prefix + directory_name):
         os.mkdir(prefix + directory_name)
 
