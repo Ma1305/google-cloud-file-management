@@ -50,8 +50,8 @@ def find_new_and_updated_cloud_files(working_directory_path, bucket, ignores=[])
     for blob in blobs:
         if blob.name in ignores:
             continue
-        if not os.path.exists(working_directory_path + blob.name) or is_file_different(
-                working_directory_path + blob.name,
+        if not os.path.exists(working_directory_path + filemanaging.convert_to_windows_path(blob.name)) or is_file_different(
+                working_directory_path + filemanaging.convert_to_windows_path(blob.name),
                 blob.name, bucket):
             pulled_files.append(blob.name)
     return pulled_files
@@ -63,7 +63,7 @@ def find_deleted_cloud_files(working_directory_path, bucket, ignores=[]):
     for item in items:
         if item in ignores:
             continue
-        if os.path.isdir(working_directory_path + "/" + item):
+        if os.path.isdir(working_directory_path + "\\" + item):
             deleted_items += find_deleted_cloud_files_recursive(working_directory_path, item, bucket, ignores=ignores)
             continue
         if not bucket.blob(item).exists():
@@ -72,12 +72,12 @@ def find_deleted_cloud_files(working_directory_path, bucket, ignores=[]):
 
 
 def find_deleted_cloud_files_recursive(working_directory_path, pre, bucket, ignores):
-    items = os.listdir(working_directory_path + "/" + pre)
+    items = os.listdir(working_directory_path + "\\" + filemanaging.convert_to_windows_path(pre))
     deleted_items = []
     for item in items:
-        if pre + "/" + item in ignores:
+        if filemanaging.convert_to_windows_path(pre) + "\\" + item in ignores:
             continue
-        if os.path.isdir(working_directory_path + "/" + pre + "/" + item):
+        if os.path.isdir(working_directory_path + "\\" + filemanaging.convert_to_windows_path(pre) + "\\" + item):
             deleted_items += find_deleted_cloud_files_recursive(working_directory_path, pre + "/" + item, bucket, ignores=ignores)
             continue
         if not bucket.blob(pre + "/" + item).exists():

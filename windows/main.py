@@ -47,8 +47,8 @@ def push():
     for item in new_files:
         print(item)
         new_files_string += item + "\n"
-        if item[-1] != "/":
-            cloud.upload_file(WORKING_DIR_PATH + item, item, my_bucket)
+        if item[-1] != "\\":
+            cloud.upload_file(WORKING_DIR_PATH + item, filemanaging.convert_from_windows_path(item), my_bucket)
             filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
     if new_files_string != "":
@@ -66,8 +66,8 @@ def push():
     for item in deleted_files:
         print(item)
         deleted_files_string += item + "\n"
-        if item[-1] != "/":
-            cloud.delete_file(item, my_bucket)
+        if item[-1] != "\\":
+            cloud.delete_file(filemanaging.convert_from_windows_path(item), my_bucket)
             filemanaging.delete_file(OLD_VERSION_DIR_PATH + item)
 
     if deleted_files_string != "":
@@ -85,8 +85,8 @@ def push():
     for item in updated_files:
         print(item)
         updated_files_string += item + "\n"
-        if item[-1] != "/":
-            cloud.upload_file(WORKING_DIR_PATH + item, item, my_bucket)
+        if item[-1] != "\\":
+            cloud.upload_file(WORKING_DIR_PATH + item, filemanaging.convert_from_windows_path(item), my_bucket)
             filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
     if updated_files_string != "":
@@ -114,12 +114,12 @@ def pull():
     pulled_files = cloud.find_new_and_updated_cloud_files(WORKING_DIR_PATH, my_bucket, ignores=IGNORES)
     for item in pulled_files:
         print(item)
-        filemanaging.create_missing_directory(WORKING_DIR_PATH + "/" + item)
-        cloud.download_file(WORKING_DIR_PATH + "/" + item, item, my_bucket)
+        filemanaging.create_missing_directory(WORKING_DIR_PATH + "\\" + filemanaging.convert_to_windows_path(item))
+        cloud.download_file(WORKING_DIR_PATH + "\\" + filemanaging.convert_to_windows_path(item), item, my_bucket)
 
     deleted_files = cloud.find_deleted_cloud_files(WORKING_DIR_PATH, my_bucket, ignores=IGNORES)
     for item in deleted_files:
-        filemanaging.delete_file(WORKING_DIR_PATH + "/" + item)
+        filemanaging.delete_file(WORKING_DIR_PATH + "\\" + filemanaging.convert_to_windows_path(item))
 
     # update old version folder
     new_files = change_scanner.scan_for_new_files()
@@ -129,19 +129,19 @@ def pull():
     print("New files are: ")
     for item in new_files:
         print(item)
-        if item[-1] != "/":
+        if item[-1] != "\\":
             filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
     print("Deleted files are: ")
     for item in deleted_files:
         print(item)
-        if item[-1] != "/":
+        if item[-1] != "\\":
             filemanaging.delete_file(OLD_VERSION_DIR_PATH + item)
 
     print("Modified files are: ")
     for item in updated_files:
         print(item)
-        if item[-1] != "/":
+        if item[-1] != "\\":
             filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
 

@@ -19,28 +19,28 @@ class ChangeScanner:
         for item in items:
             if item in self.skip_files:
                 continue
-            if not os.path.exists(self.create_old_path_names() + "/" + item):
+            if not os.path.exists(self.create_old_path_names() + "\\" + item):
                 add_on = ""
-                if os.path.isdir(self.create_new_path_names() + "/" + item):
-                    add_on = "/"
+                if os.path.isdir(self.create_new_path_names() + "\\" + item):
+                    add_on = "\\"
                 new_items.append(item + add_on)
-            if os.path.isdir(self.create_new_path_names() + "/" + item):
+            if os.path.isdir(self.create_new_path_names() + "\\" + item):
                 new_items += self.scan_for_new_files_recursive(item)
         return new_items
 
     def scan_for_new_files_recursive(self, pre):
-        items = os.listdir(self.create_new_path_names() + "/" + pre)
+        items = os.listdir(self.create_new_path_names() + "\\" + pre)
         new_items = []
         for item in items:
-            if pre + "/" + item in self.skip_files:
+            if pre + "\\" + item in self.skip_files:
                 continue
-            if not os.path.exists(self.create_old_path_names() + "/" + pre + "/" + item):
+            if not os.path.exists(self.create_old_path_names() + "\\" + pre + "\\" + item):
                 add_on = ""
-                if os.path.isdir(self.create_new_path_names() + "/" + pre + "/" + item):
-                    add_on = "/"
-                new_items.append(pre + "/" + item + add_on)
-            if os.path.isdir(self.create_new_path_names() + "/" + pre + "/" + item):
-                new_items += self.scan_for_new_files_recursive(pre + "/" + item)
+                if os.path.isdir(self.create_new_path_names() + "\\" + pre + "\\" + item):
+                    add_on = "\\"
+                new_items.append(pre + "\\" + item + add_on)
+            if os.path.isdir(self.create_new_path_names() + "\\" + pre + "\\" + item):
+                new_items += self.scan_for_new_files_recursive(pre + "\\" + item)
 
         return new_items
 
@@ -48,65 +48,65 @@ class ChangeScanner:
         items = os.listdir(self.create_old_path_names())
         deleted_items = []
         for item in items:
-            if not os.path.exists(self.create_new_path_names() + "/" + item):
+            if not os.path.exists(self.create_new_path_names() + "\\" + item):
                 add_on = ""
-                if os.path.isdir(self.create_old_path_names() + "/" + item):
-                    add_on = "/"
+                if os.path.isdir(self.create_old_path_names() + "\\" + item):
+                    add_on = "\\"
                 deleted_items.append(item + add_on)
-            if os.path.isdir(self.create_old_path_names() + "/" + item):
+            if os.path.isdir(self.create_old_path_names() + "\\" + item):
                 deleted_items += self.scan_for_deleted_files_recursive(item)
         return deleted_items
 
     def scan_for_deleted_files_recursive(self, pre):
-        items = os.listdir(self.create_old_path_names() + "/" + pre)
+        items = os.listdir(self.create_old_path_names() + "\\" + pre)
         deleted_items = []
         for item in items:
-            if not os.path.exists(self.create_new_path_names() + "/" + pre + "/" + item):
+            if not os.path.exists(self.create_new_path_names() + "\\" + pre + "\\" + item):
                 add_on = ""
-                if os.path.isdir(self.create_old_path_names() + "/" + item):
-                    add_on = "/"
-                deleted_items.append(pre + "/" + item + add_on)
-            if os.path.isdir(self.create_old_path_names() + "/" + pre + "/" + item):
-                deleted_items += self.scan_for_deleted_files_recursive(pre + "/" + item)
+                if os.path.isdir(self.create_old_path_names() + "\\" + item):
+                    add_on = "\\"
+                deleted_items.append(pre + "\\" + item + add_on)
+            if os.path.isdir(self.create_old_path_names() + "\\" + pre + "\\" + item):
+                deleted_items += self.scan_for_deleted_files_recursive(pre + "\\" + item)
         return deleted_items
 
     def scan_for_updated_files(self):
         items = os.listdir(self.create_old_path_names())
         update_items = []
         for item in items:
-            if not os.path.exists(self.create_new_path_names() + "/" + item):
+            if not os.path.exists(self.create_new_path_names() + "\\" + item):
                 continue
             if item in self.skip_files:
                 continue
-            if os.path.isdir(self.create_old_path_names() + "/" + item):
+            if os.path.isdir(self.create_old_path_names() + "\\" + item):
                 update_items += self.scan_for_updated_files_recursive(item)
                 continue
-            if get_crc32c(self.create_old_path_names() + "/" + item) != \
-                    get_crc32c(self.create_new_path_names() + "/" + item):
+            if get_crc32c(self.create_old_path_names() + "\\" + item) != \
+                    get_crc32c(self.create_new_path_names() + "\\" + item):
                 update_items.append(item)
         return update_items
 
     def scan_for_updated_files_recursive(self, pre):
-        items = os.listdir(self.create_old_path_names() + "/" + pre)
+        items = os.listdir(self.create_old_path_names() + "\\" + pre)
         update_items = []
         for item in items:
-            if not os.path.exists(self.create_new_path_names() + "/" + pre + "/" + item):
+            if not os.path.exists(self.create_new_path_names() + "\\" + pre + "\\" + item):
                 continue
-            if pre + "/" + item in self.skip_files:
+            if pre + "\\" + item in self.skip_files:
                 continue
-            if os.path.isdir(self.create_old_path_names() + "/" + pre + "/" + item):
-                update_items += self.scan_for_updated_files_recursive(pre + "/" + item)
+            if os.path.isdir(self.create_old_path_names() + "\\" + pre + "\\" + item):
+                update_items += self.scan_for_updated_files_recursive(pre + "\\" + item)
                 continue
-            if get_crc32c(self.create_old_path_names() + "/" + pre + "/" + item) != \
-                    get_crc32c(self.create_new_path_names() + "/" + pre + "/" + item):
-                update_items.append(pre + "/" + item)
+            if get_crc32c(self.create_old_path_names() + "\\" + pre + "\\" + item) != \
+                    get_crc32c(self.create_new_path_names() + "\\" + pre + "\\" + item):
+                update_items.append(pre + "\\" + item)
         return update_items
 
     def create_new_path_names(self):
-        return os.path.dirname(__file__) + "/" + self.new_version_path
+        return os.path.dirname(__file__) + "\\" + self.new_version_path
 
     def create_old_path_names(self):
-        return os.path.dirname(__file__) + "/" + self.old_version_path
+        return os.path.dirname(__file__) + "\\" + self.old_version_path
 
 
 def get_crc32c(filename):
@@ -135,7 +135,7 @@ def create_missing_directory(filepath, prefix=""):
     :param prefix:
     :return:
     """
-    directory_from_index = filepath.find("/")
+    directory_from_index = filepath.find("\\")
     if directory_from_index == -1:
         return
 
@@ -149,7 +149,7 @@ def create_missing_directory(filepath, prefix=""):
     if not os.path.exists(prefix + directory_name):
         os.mkdir(prefix + directory_name)
 
-    create_missing_directory(filepath, prefix=prefix + directory_name + "/")
+    create_missing_directory(filepath, prefix=prefix + directory_name + "\\")
 
 
 def create_csv(filename, fields):
@@ -160,3 +160,11 @@ def append_row_to_csv(filename, row):
     with open(filename, 'a') as csvfile:
         csvwriter = csv.writer(csvfile)
         csvwriter.writerow(row)
+
+
+def convert_from_windows_path(path):
+    path.replace("\\", "/")
+
+
+def convert_to_windows_path(path):
+    path.replace("/", "\\")
