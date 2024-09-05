@@ -6,8 +6,8 @@ import gcloud_helper as cloud
 
 from google.cloud import storage
 from filemanaging import ChangeScanner
-from config import CREDENTIAL_FILENAME, BUCKET_NAME, IGNORES, USERNAME, OLD_VERSION_DIR_PATH, WORKING_DIR_PATH
-from module_helper import Option
+from config import CREDENTIAL_FILENAME, BUCKET_NAME, IGNORES, USERNAME, OLD_VERSION_DIR_PATH, WORKING_DIR_PATH, LOGS_FOLDER
+from module_helper import Option, log
 
 
 def setup():
@@ -35,6 +35,7 @@ def push():
     global change_scanner, my_bucket
 
     confirmation("push")
+    log_file_path = LOGS_FOLDER + "/logs-" + datetime.datetime.now()
 
     new_files = change_scanner.scan_for_new_files()
     deleted_files = change_scanner.scan_for_deleted_files()
@@ -42,17 +43,17 @@ def push():
 
     cloud.download_file("logs.csv", "logs.csv", my_bucket)
 
-    print("New files are: ")
+    log("New files are: ", log_file_path)
     new_files_string = ""
     for item in new_files:
-        print(item)
+        log(item, log_file_path)
         new_files_string += item + "\n"
         if item[-1] != "/":
             cloud.upload_file(WORKING_DIR_PATH + item, item, my_bucket)
             filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
     if new_files_string != "":
-        print("some new files")
+        log("some new files", log_file_path)
         filemanaging.append_row_to_csv("logs.csv", [
             USERNAME,
             str(datetime.datetime.now()),
@@ -61,17 +62,17 @@ def push():
             "None"
         ])
 
-    print("Deleted files are: ")
+    log("Deleted files are: ", log_file_path)
     deleted_files_string = ""
     for item in deleted_files:
-        print(item)
+        log(item, log_file_path)
         deleted_files_string += item + "\n"
         if item[-1] != "/":
             cloud.delete_file(item, my_bucket)
             filemanaging.delete_file(OLD_VERSION_DIR_PATH + item)
 
     if deleted_files_string != "":
-        print("some deleted files")
+        log("some deleted files", log_file_path)
         filemanaging.append_row_to_csv("logs.csv", [
             USERNAME,
             str(datetime.datetime.now()),
@@ -80,17 +81,17 @@ def push():
             "None"
         ])
 
-    print("Modified files are: ")
+    log("Modified files are: ", log_file_path)
     updated_files_string = ""
     for item in updated_files:
-        print(item)
+        log(item, log_file_path)
         updated_files_string += item + "\n"
         if item[-1] != "/":
             cloud.upload_file(WORKING_DIR_PATH + item, item, my_bucket)
             filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
     if updated_files_string != "":
-        print("some updated files")
+        log("some updated files", log_file_path)
         filemanaging.append_row_to_csv("logs.csv", [
             USERNAME,
             str(datetime.datetime.now()),
@@ -100,7 +101,7 @@ def push():
         ])
 
     if cloud.is_file_different("logs.csv", "logs.csv", my_bucket):
-        print("uploading")
+        log("uploading", log_file_path)
         cloud.upload_file("logs.csv", "logs.csv", my_bucket)
 
     filemanaging.delete_file("logs.csv")
@@ -110,10 +111,11 @@ def pull():
     global my_bucket
 
     confirmation("pull")
+    log_file_path = LOGS_FOLDER + "/logs-" + datetime.datetime.now()
 
     pulled_files = cloud.find_new_and_updated_cloud_files(WORKING_DIR_PATH, my_bucket, ignores=IGNORES)
     for item in pulled_files:
-        print(item)
+        log(item, log)
         filemanaging.create_missing_directory(WORKING_DIR_PATH + "/" + item)
         cloud.download_file(WORKING_DIR_PATH + "/" + item, item, my_bucket)
 
@@ -126,21 +128,21 @@ def pull():
     deleted_files = change_scanner.scan_for_deleted_files()
     updated_files = change_scanner.scan_for_updated_files()
 
-    print("New files are: ")
+    log("New files are: ", log_file_path)
     for item in new_files:
-        print(item)
+        log(item, log_file_path)
         if item[-1] != "/":
             filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
-    print("Deleted files are: ")
+    log("Deleted files are: ", log_file_path)
     for item in deleted_files:
-        print(item)
+        log(item, log_file_path)
         if item[-1] != "/":
             filemanaging.delete_file(OLD_VERSION_DIR_PATH + item)
 
-    print("Modified files are: ")
+    log("Modified files are: ", log_file_path)
     for item in updated_files:
-        print(item)
+        log(item, log_file_path)
         if item[-1] != "/":
             filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
