@@ -103,10 +103,10 @@ class ChangeScanner:
         return update_items
 
     def create_new_path_names(self):
-        return os.path.dirname(__file__) + "/" + self.new_version_path
+        return self.new_version_path
 
     def create_old_path_names(self):
-        return os.path.dirname(__file__) + "/" + self.old_version_path
+        return self.old_version_path
 
 
 def get_crc32c(filename):

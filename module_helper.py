@@ -7,6 +7,13 @@ class Option:
 
 
 def log(message, log_file_path):
-    with open(log_file_path, "a") as log_file:
-        log_file.write(message)
+    create_file = False
+    try:
+        with open(log_file_path, "a") as log_file:
+            log_file.write(message + "\n")
+    except OSError:
+        create_file = True
+    if create_file:
+        with open(log_file_path, "w") as log_file:
+            log_file.write(message + "\n")
     print(message)

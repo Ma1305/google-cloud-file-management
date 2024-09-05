@@ -6,12 +6,13 @@ import gcloud_helper as cloud
 
 from google.cloud import storage
 from filemanaging import ChangeScanner
-from config import CREDENTIAL_FILENAME, BUCKET_NAME, IGNORES, USERNAME, OLD_VERSION_DIR_PATH, WORKING_DIR_PATH, LOGS_FOLDER
+from config import CREDENTIAL_FILENAME, BUCKET_NAME, IGNORES, USERNAME, OLD_VERSION_DIR_PATH, WORKING_DIR_PATH, \
+    LOGS_FOLDER, BACKUP_BUCKET_NAME, AUTO_BACKUP
 from module_helper import Option, log
 
 
 def setup():
-    global my_bucket
+    global my_bucket, my_backup_bucket
     fields = [
         "Username",
         "Time",
@@ -34,16 +35,23 @@ def setup():
 def push():
     global change_scanner, my_bucket
 
-    log_file_path = LOGS_FOLDER + "/logs-" + datetime.datetime.now()
+    log_file_path = LOGS_FOLDER + "/logs-" + str(datetime.datetime.now().strftime("%y-%m-%d %M"))
     confirmation("push", log_file_path)
 
     new_files = change_scanner.scan_for_new_files()
     deleted_files = change_scanner.scan_for_deleted_files()
     updated_files = change_scanner.scan_for_updated_files()
 
+    if len(new_files) == 0 and len(deleted_files) == 0 and len(updated_files) == 0:
+        log("No changes detected, everything up to date with the cloud", log_file_path)
+        return
+
+    if AUTO_BACKUP:
+        cloud.backup(my_bucket, my_backup_bucket, IGNORES)
+
     cloud.download_file("logs.csv", "logs.csv", my_bucket)
 
-    log("New files are: ", log_file_path)
+    log("\nNew files are: ", log_file_path)
     new_files_string = ""
     for item in new_files:
         log(item, log_file_path)
@@ -53,7 +61,7 @@ def push():
                 filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
     if new_files_string != "":
-        log("some new files", log_file_path)
+        log("\nsome new files\n\n", log_file_path)
         filemanaging.append_row_to_csv("logs.csv", [
             USERNAME,
             str(datetime.datetime.now()),
@@ -62,7 +70,7 @@ def push():
             "None"
         ])
 
-    log("Deleted files are: ", log_file_path)
+    log("\nDeleted files are: ", log_file_path)
     deleted_files_string = ""
     for item in deleted_files:
         log(item, log_file_path)
@@ -72,7 +80,7 @@ def push():
                 filemanaging.delete_file(OLD_VERSION_DIR_PATH + item)
 
     if deleted_files_string != "":
-        log("some deleted files", log_file_path)
+        log("\nsome deleted files\n\n", log_file_path)
         filemanaging.append_row_to_csv("logs.csv", [
             USERNAME,
             str(datetime.datetime.now()),
@@ -81,7 +89,7 @@ def push():
             "None"
         ])
 
-    log("Modified files are: ", log_file_path)
+    log("\nModified files are: ", log_file_path)
     updated_files_string = ""
     for item in updated_files:
         log(item, log_file_path)
@@ -91,7 +99,7 @@ def push():
                 filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
     if updated_files_string != "":
-        log("some updated files", log_file_path)
+        log("\nsome updated files\n\n", log_file_path)
         filemanaging.append_row_to_csv("logs.csv", [
             USERNAME,
             str(datetime.datetime.now()),
@@ -110,7 +118,7 @@ def push():
 def pull():
     global my_bucket
 
-    log_file_path = LOGS_FOLDER + "/logs-" + datetime.datetime.now()
+    log_file_path = LOGS_FOLDER + "/logs-" + str(datetime.datetime.now().strftime("%y-%m-%d %M"))
     confirmation("pull", log_file_path)
 
     pulled_files = cloud.find_new_and_updated_cloud_files(WORKING_DIR_PATH, my_bucket, ignores=IGNORES)
@@ -119,7 +127,11 @@ def pull():
         filemanaging.create_missing_directory(WORKING_DIR_PATH + "/" + item)
         cloud.download_file(WORKING_DIR_PATH + "/" + item, item, my_bucket)
 
-    deleted_files = cloud.find_deleted_cloud_files(WORKING_DIR_PATH, my_bucket, ignores=IGNORES)
+    deleted_files = cloud.find_deleted_cloud_files(OLD_VERSION_DIR_PATH, my_bucket, ignores=IGNORES)
+    if len(deleted_files) == 0:
+        log("No changes detected, everything up to date with the cloud", log_file_path)
+        return
+
     for item in deleted_files:
         filemanaging.delete_file(WORKING_DIR_PATH + "/" + item)
 
@@ -128,23 +140,33 @@ def pull():
     deleted_files = change_scanner.scan_for_deleted_files()
     updated_files = change_scanner.scan_for_updated_files()
 
-    log("New files are: ", log_file_path)
+    if len(new_files) == 0 and len(deleted_files) == 0 and len(updated_files) == 0:
+        log("No changes detected, everything up to date with the cloud", log_file_path)
+        return
+
+    log("\nNew files are: ", log_file_path)
     for item in new_files:
         log(item, log_file_path)
         if item[-1] != "/":
             filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
-    log("Deleted files are: ", log_file_path)
+    log("\nDeleted files are: ", log_file_path)
     for item in deleted_files:
         log(item, log_file_path)
         if item[-1] != "/":
             filemanaging.delete_file(OLD_VERSION_DIR_PATH + item)
 
-    log("Modified files are: ", log_file_path)
+    log("\nModified files are: ", log_file_path)
     for item in updated_files:
         log(item, log_file_path)
         if item[-1] != "/":
             filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
+
+
+def backup():
+    log_file_path = LOGS_FOLDER + "/logs-" + str(datetime.datetime.now().strftime("%y-%m-%d %M"))
+    confirmation("backup", log_file_path)
+    cloud.backup(my_bucket, my_backup_bucket, IGNORES)
 
 
 def confirmation(action, log_file_path):
@@ -162,6 +184,7 @@ def confirmation(action, log_file_path):
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = CREDENTIAL_FILENAME
 storage_client = storage.Client()
 my_bucket = storage_client.get_bucket(BUCKET_NAME)
+my_backup_bucket = storage_client.get_bucket(BACKUP_BUCKET_NAME)
 
 change_scanner = ChangeScanner(OLD_VERSION_DIR_PATH, WORKING_DIR_PATH, skip_files=IGNORES)
 
@@ -174,7 +197,9 @@ options = [
     Option("pull",
            "download only the files updated since the last download (new, deleted, updates files)",
            pull,
-           warning="IF YOU HAVE MADE ANY CHANGES, YOUR CHANGES WILL BE OVERWRITTEN (POSSIBILITY OF CONFLICT)")
+           warning="IF YOU HAVE MADE ANY CHANGES, YOUR CHANGES WILL BE OVERWRITTEN (POSSIBILITY OF CONFLICT)"),
+    Option("backup", "Will update the backup bucket to the current version of the project",
+           backup)
 ]
 
 if len(sys.argv) < 1:
