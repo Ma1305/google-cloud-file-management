@@ -34,8 +34,8 @@ def setup():
 def push():
     global change_scanner, my_bucket
 
-    confirmation("push")
     log_file_path = LOGS_FOLDER + "/logs-" + datetime.datetime.now()
+    confirmation("push", log_file_path)
 
     new_files = change_scanner.scan_for_new_files()
     deleted_files = change_scanner.scan_for_deleted_files()
@@ -49,8 +49,8 @@ def push():
         log(item, log_file_path)
         new_files_string += item + "\n"
         if item[-1] != "/":
-            cloud.upload_file(WORKING_DIR_PATH + item, item, my_bucket)
-            filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
+            if cloud.upload_file(WORKING_DIR_PATH + item, item, my_bucket):
+                filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
     if new_files_string != "":
         log("some new files", log_file_path)
@@ -68,8 +68,8 @@ def push():
         log(item, log_file_path)
         deleted_files_string += item + "\n"
         if item[-1] != "/":
-            cloud.delete_file(item, my_bucket)
-            filemanaging.delete_file(OLD_VERSION_DIR_PATH + item)
+            if cloud.delete_file(item, my_bucket):
+                filemanaging.delete_file(OLD_VERSION_DIR_PATH + item)
 
     if deleted_files_string != "":
         log("some deleted files", log_file_path)
@@ -87,8 +87,8 @@ def push():
         log(item, log_file_path)
         updated_files_string += item + "\n"
         if item[-1] != "/":
-            cloud.upload_file(WORKING_DIR_PATH + item, item, my_bucket)
-            filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
+            if cloud.upload_file(WORKING_DIR_PATH + item, item, my_bucket):
+                filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
     if updated_files_string != "":
         log("some updated files", log_file_path)
@@ -110,8 +110,8 @@ def push():
 def pull():
     global my_bucket
 
-    confirmation("pull")
     log_file_path = LOGS_FOLDER + "/logs-" + datetime.datetime.now()
+    confirmation("pull", log_file_path)
 
     pulled_files = cloud.find_new_and_updated_cloud_files(WORKING_DIR_PATH, my_bucket, ignores=IGNORES)
     for item in pulled_files:
@@ -147,13 +147,13 @@ def pull():
             filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
 
-def confirmation(action):
+def confirmation(action, log_file_path):
     """
     :return: bool
     """
     response = input(f"Enter yes to confirm that you want to {action}: ")
     if response.lower().strip() == "yes":
-        print(f"starting the {action} process\n")
+        log(f"starting the {action} process\n", log_file_path)
         return
     print(f"canceling the {action} process\n")
     quit()
