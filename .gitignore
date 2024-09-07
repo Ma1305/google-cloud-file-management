@@ -1,7 +1,8 @@
 __pycache__
 scenic-firefly-393523-1d7574d19ce3.json
 milky-way-trail-website-d532674695dd.json
-config.py
 .idea
 /test_files
 /prev_version
+*config.py
+/logs

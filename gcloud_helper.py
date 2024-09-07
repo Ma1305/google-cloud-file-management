@@ -1,6 +1,8 @@
 import filemanaging
 import os
 
+import module_helper
+
 
 def upload_file(file_name, blob_name, bucket):
         blob = bucket.blob(blob_name)
@@ -14,8 +16,8 @@ def upload_from_string(data, blob_name, bucket):
         blob.upload_from_string(data)
         return True
     except Exception as e:
-        print(f"following error occurred when backing up {blob_name} into {bucket}")
-        print(e)
+        module_helper.log(f"following error occurred when backing up {blob_name} into {bucket}")
+        module_helper.log(e)
         return False
 
 
@@ -25,8 +27,8 @@ def download_file(file_name, blob_name, bucket):
         blob.download_to_filename(file_name)
         return True
     except Exception as e:
-        print(f"following error occurred when downloading {blob_name} in {bucket.name} bucket as {file_name} ")
-        print(e)
+        module_helper.log(f"following error occurred when downloading {blob_name} in {bucket.name} bucket as {file_name} ")
+        module_helper.log(e)
         return False
 
 
@@ -36,8 +38,8 @@ def delete_file(blob_name, bucket):
         blob.delete()
         return True
     except Exception as e:
-        print(f"following error occurred when deleting {blob_name} in {bucket.name}")
-        print(e)
+        module_helper.log(f"following error occurred when deleting {blob_name} in {bucket.name}")
+        module_helper.log(e)
         return False
 
 

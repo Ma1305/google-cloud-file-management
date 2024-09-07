@@ -5,6 +5,8 @@ import filemanaging
 import gcloud_helper as cloud
 
 from google.cloud import storage
+
+import module_helper
 from filemanaging import ChangeScanner
 from config import CREDENTIAL_FILENAME, BUCKET_NAME, IGNORES, USERNAME, OLD_VERSION_DIR_PATH, WORKING_DIR_PATH, \
     LOGS_FOLDER, BACKUP_BUCKET_NAME, AUTO_BACKUP
@@ -35,15 +37,15 @@ def setup():
 def push():
     global change_scanner, my_bucket
 
-    log_file_path = LOGS_FOLDER + "/logs-" + str(datetime.datetime.now().strftime("%y-%m-%d %M"))
-    confirmation("push", log_file_path)
+    module_helper.log_file_path = LOGS_FOLDER + "/logs-" + str(datetime.datetime.now().strftime("%y-%m-%d %M"))
+    confirmation("push")
 
     new_files = change_scanner.scan_for_new_files()
     deleted_files = change_scanner.scan_for_deleted_files()
     updated_files = change_scanner.scan_for_updated_files()
 
     if len(new_files) == 0 and len(deleted_files) == 0 and len(updated_files) == 0:
-        log("No changes detected, everything up to date with the cloud", log_file_path)
+        log("No changes detected, everything up to date with the cloud")
         return
 
     if AUTO_BACKUP:
@@ -51,17 +53,17 @@ def push():
 
     cloud.download_file("logs.csv", "logs.csv", my_bucket)
 
-    log("\nNew files are: ", log_file_path)
+    log("\nNew files are: ")
     new_files_string = ""
     for item in new_files:
-        log(item, log_file_path)
+        log(item)
         new_files_string += item + "\n"
         if item[-1] != "/":
             if cloud.upload_file(WORKING_DIR_PATH + item, item, my_bucket):
                 filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
     if new_files_string != "":
-        log("\nsome new files\n\n", log_file_path)
+        log("\nsome new files\n\n")
         filemanaging.append_row_to_csv("logs.csv", [
             USERNAME,
             str(datetime.datetime.now()),
@@ -70,17 +72,17 @@ def push():
             "None"
         ])
 
-    log("\nDeleted files are: ", log_file_path)
+    log("\nDeleted files are: ")
     deleted_files_string = ""
     for item in deleted_files:
-        log(item, log_file_path)
+        log(item)
         deleted_files_string += item + "\n"
         if item[-1] != "/":
             if cloud.delete_file(item, my_bucket):
                 filemanaging.delete_file(OLD_VERSION_DIR_PATH + item)
 
     if deleted_files_string != "":
-        log("\nsome deleted files\n\n", log_file_path)
+        log("\nsome deleted files\n\n")
         filemanaging.append_row_to_csv("logs.csv", [
             USERNAME,
             str(datetime.datetime.now()),
@@ -89,17 +91,17 @@ def push():
             "None"
         ])
 
-    log("\nModified files are: ", log_file_path)
+    log("\nModified files are: ")
     updated_files_string = ""
     for item in updated_files:
-        log(item, log_file_path)
+        log(item)
         updated_files_string += item + "\n"
         if item[-1] != "/":
             if cloud.upload_file(WORKING_DIR_PATH + item, item, my_bucket):
                 filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
     if updated_files_string != "":
-        log("\nsome updated files\n\n", log_file_path)
+        log("\nsome updated files\n\n")
         filemanaging.append_row_to_csv("logs.csv", [
             USERNAME,
             str(datetime.datetime.now()),
@@ -109,7 +111,7 @@ def push():
         ])
 
     if cloud.is_file_different("logs.csv", "logs.csv", my_bucket):
-        log("uploading", log_file_path)
+        log("uploading")
         cloud.upload_file("logs.csv", "logs.csv", my_bucket)
 
     filemanaging.delete_file("logs.csv")
@@ -118,18 +120,18 @@ def push():
 def pull():
     global my_bucket
 
-    log_file_path = LOGS_FOLDER + "/logs-" + str(datetime.datetime.now().strftime("%y-%m-%d %M"))
-    confirmation("pull", log_file_path)
+    module_helper.log_file_path = LOGS_FOLDER + "/logs-" + str(datetime.datetime.now().strftime("%y-%m-%d %M"))
+    confirmation("pull")
 
-    pulled_files = cloud.find_new_and_updated_cloud_files(WORKING_DIR_PATH, my_bucket, ignores=IGNORES)
+    pulled_files = cloud.find_new_and_updated_cloud_files(OLD_VERSION_DIR_PATH, my_bucket, ignores=IGNORES)
     for item in pulled_files:
-        log(item, log)
+        log(item)
         filemanaging.create_missing_directory(WORKING_DIR_PATH + "/" + item)
         cloud.download_file(WORKING_DIR_PATH + "/" + item, item, my_bucket)
 
     deleted_files = cloud.find_deleted_cloud_files(OLD_VERSION_DIR_PATH, my_bucket, ignores=IGNORES)
     if len(deleted_files) == 0:
-        log("No changes detected, everything up to date with the cloud", log_file_path)
+        log("No changes detected, everything up to date with the cloud")
         return
 
     for item in deleted_files:
@@ -141,41 +143,41 @@ def pull():
     updated_files = change_scanner.scan_for_updated_files()
 
     if len(new_files) == 0 and len(deleted_files) == 0 and len(updated_files) == 0:
-        log("No changes detected, everything up to date with the cloud", log_file_path)
+        log("No changes detected, everything up to date with the cloud")
         return
 
-    log("\nNew files are: ", log_file_path)
+    log("\nNew files are: ")
     for item in new_files:
-        log(item, log_file_path)
+        log(item)
         if item[-1] != "/":
             filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
-    log("\nDeleted files are: ", log_file_path)
+    log("\nDeleted files are: ")
     for item in deleted_files:
-        log(item, log_file_path)
+        log(item)
         if item[-1] != "/":
             filemanaging.delete_file(OLD_VERSION_DIR_PATH + item)
 
-    log("\nModified files are: ", log_file_path)
+    log("\nModified files are: ")
     for item in updated_files:
-        log(item, log_file_path)
+        log(item)
         if item[-1] != "/":
             filemanaging.copy_file_to(WORKING_DIR_PATH + item, OLD_VERSION_DIR_PATH + item)
 
 
 def backup():
-    log_file_path = LOGS_FOLDER + "/logs-" + str(datetime.datetime.now().strftime("%y-%m-%d %M"))
-    confirmation("backup", log_file_path)
+    module_helper.log_file_path = LOGS_FOLDER + "/logs-" + str(datetime.datetime.now().strftime("%y-%m-%d %M"))
+    confirmation("backup")
     cloud.backup(my_bucket, my_backup_bucket, IGNORES)
 
 
-def confirmation(action, log_file_path):
+def confirmation(action):
     """
     :return: bool
     """
     response = input(f"Enter yes to confirm that you want to {action}: ")
     if response.lower().strip() == "yes":
-        log(f"starting the {action} process\n", log_file_path)
+        log(f"starting the {action} process\n")
         return
     print(f"canceling the {action} process\n")
     quit()
